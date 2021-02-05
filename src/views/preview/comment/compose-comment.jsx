@@ -50,7 +50,7 @@ class ComposeComment extends React.Component {
             status: ComposeStatus.EDITING,
             error: null,
             appealId: null,
-            muteOpen: false,
+            muteOpen: muteExpiresAtMs > Date.now() && this.props.isReply,
             muteExpiresAtMs: muteExpiresAtMs,
             muteType: this.props.muteStatus.currentMessageType,
             showWarning: this.props.muteStatus.showWarning ? this.props.muteStatus.showWarning : false
@@ -187,6 +187,14 @@ class ComposeComment extends React.Component {
         return creationTimeMinutesAgo < 2 && numOffenses === 1;
     }
 
+    getMuteModalStartStep () {
+        // Decides which step of the mute modal to start on. If this was a reply button click,
+        // we show them the step that tells them how much time is left on their mute, otherwise
+        // they start at the beginning of the progression.
+        return this.props.isReply && this.state.status !== ComposeStatus.REJECTED_MUTE ?
+            MuteModal.steps.MUTE_INFO : MuteModal.steps.COMMENT_ISSUE;
+    }
+
     getMuteMessageInfo () {
         // return the ids for the messages that are shown for this mute type
         // If mute modals have more than one unique "step" we could pass an array of steps
@@ -232,7 +240,7 @@ class ComposeComment extends React.Component {
     render () {
         return (
             <React.Fragment>
-                {this.isMuted() ? (
+                {(this.isMuted() && !(this.props.isReply && this.state.status !== ComposeStatus.REJECTED_MUTE)) ? (
                     <FlexRow className="comment">
                         <CommentingStatus>
                             <p><FormattedMessage id={this.getMuteMessageInfo().commentType} /></p>
@@ -344,6 +352,7 @@ class ComposeComment extends React.Component {
                         muteModalMessages={this.getMuteMessageInfo()}
                         shouldCloseOnOverlayClick={false}
                         showWarning={this.state.showWarning}
+                        startStep={this.getMuteModalStartStep()}
                         timeMuted={formatTime.formatRelativeTime(this.state.muteExpiresAtMs, window._locale)}
                         onRequestClose={this.handleMuteClose}
                     />
@@ -355,6 +364,7 @@ class ComposeComment extends React.Component {
 
 ComposeComment.propTypes = {
     commenteeId: PropTypes.number,
+    isReply: PropTypes.bool,
     muteStatus: PropTypes.shape({
         offenses: PropTypes.array,
         muteExpiresAt: PropTypes.number,
